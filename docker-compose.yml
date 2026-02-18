@@ -1,0 +1,33 @@
+services:
+  db:
+    image: postgres:16
+    container_name: showroom_db
+    environment:
+      POSTGRES_DB: showroom
+      POSTGRES_USER: showroom
+      POSTGRES_PASSWORD: showroom
+    ports:
+      - "55432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U showroom -d showroom"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: showroom_agent
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+    command: ["python", "-m", "src.app"]
+
+volumes:
+  pgdata:
