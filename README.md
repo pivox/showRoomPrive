@@ -1,119 +1,90 @@
 # Showroom Deals Agent
 
-Base de projet "prête à coder" pour:
-- scanner un catalogue Showroomprive après login,
-- détecter les nouveautés à intervalle régulier,
-- valider le prix marque,
-- scorer les remises réelles,
-- notifier sur Slack.
-
-## Important
-
-- Respecte les CGU des sites ciblés.
-- Ne contourne pas CAPTCHA / anti-bot.
-- En cas de challenge, arrête le run et traite manuellement.
+Agent Python qui scrape Showroomprivé, valide les prix via des agents IA (Claude, GPT-4o, Gemini), score les vraies remises et notifie sur Slack.
 
 ## Stack
 
-- Python 3.11
-- Playwright (navigation/login)
-- PostgreSQL + SQLAlchemy
-- Slack Incoming Webhook
+- Python 3.11 · FastAPI · Playwright · PostgreSQL · SQLAlchemy 2 · Alembic
+- Next.js 14 · Tailwind · TanStack Query
+- Anthropic / OpenAI / Google AI · Tavily Search
 - Docker Compose
 
-## Arborescence
-
-```text
-src/
-  app.py
-  config.py
-  db.py
-  models.py
-  scoring.py
-  showroom/
-    browser.py
-    scraper.py
-  brands/
-    price_validator.py
-  notifier/
-    slack.py
-sql/
-  init.sql
-```
-
-## Démarrage local
-
-1. Crée un environnement Python et installe les dépendances:
+## Démarrage rapide
 
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+# 1. Environnement Python
+python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 playwright install chromium
-```
 
-2. Configure les variables:
+# 2. Configuration
+cp .env.example .env   # remplir les credentials
 
-```bash
-cp .env.example .env
-```
-
-Par défaut, le projet expose Postgres sur `localhost:55432` pour éviter les conflits
-avec des Postgres locaux/containers déjà actifs sur `5432/5433/5434`.
-
-3. Lance PostgreSQL via Docker:
-
-```bash
+# 3. Base de données
 docker compose up -d db
+
+# 4. Migrations
+alembic upgrade head
+
+# 5. API backend
+uvicorn src.api.main:app --reload
+# → http://localhost:8000
+
+# 6. Frontend (autre terminal)
+cd frontend && npm install && npm run dev
+# → http://localhost:3000
 ```
 
-4. Lance un scan unique:
-
-```bash
-python -m src.app --once
-```
-
-5. Lance en boucle (scan périodique):
-
-```bash
-python -m src.app
-```
-
-## Démarrage Docker complet
+### Stack complète Docker
 
 ```bash
 docker compose up --build
 ```
 
-## Variables principales
+## Variables d'environnement clés
 
-- `SHOWROOM_EMAIL`, `SHOWROOM_PASSWORD`: credentials de connexion
-- `SHOWROOM_LOGIN_URL`, `SHOWROOM_CATALOG_URL`: URLs à scraper
-- `SHOWROOM_MAX_SALES_PER_SCAN`: nombre max de ventes scannées par run
-- `SHOWROOM_MAX_PAGES_PER_SALE`: nombre max de pages scannées par vente
-- `DATABASE_URL`: URL Postgres SQLAlchemy
-- `SLACK_WEBHOOK_URL`: webhook Slack
-- `SCAN_INTERVAL_SECONDS`: intervalle entre scans (défaut 3600)
-- `MIN_REAL_DISCOUNT_PERCENT`: seuil de notification
-- `MAX_SHOWROOM_PRICE_EUR`: plafond prix
+| Variable | Description |
+|---|---|
+| `SHOWROOM_EMAIL` / `SHOWROOM_PASSWORD` | Credentials Showroomprivé |
+| `DATABASE_URL` | PostgreSQL (défaut port 55432) |
+| `SLACK_WEBHOOK_URL` | Webhook Slack (optionnel) |
+| `ANTHROPIC_API_KEY` | Claude provider |
+| `OPENAI_API_KEY` | GPT-4o provider |
+| `GOOGLE_AI_API_KEY` | Gemini provider |
+| `TAVILY_API_KEY` | Recherche web pour Claude |
+| `AI_PROVIDER_ORDER` | Ordre de fallback (`claude,openai,gemini`) |
+| `CRON_AUTOSTART` | Démarrer le cron au boot de l'API |
+| `SCAN_INTERVAL_SECONDS` | Intervalle entre scans (défaut 3600) |
 
-## Flux listing Showroomprivé implémenté
+Voir `.env.example` pour la liste complète.
 
-- La home expose des liens de ventes (`/vente.aspx?vente=<id>`), pas les produits.
-- Le scraper détecte ces ventes, les convertit en URLs `/catalog/sale/<id>`.
-- Les produits sont récupérés depuis `.js-product-card` avec pagination `?page=N`.
-- Les produits sont dédupliqués par `source_product_id`.
-- Détails du flux: `docs/showroom_listing_flow.md`.
+## Mode CLI (sans API)
 
-## État actuel
+```bash
+# Scan unique
+python -m src.app --once
 
-Ce bootstrap contient des squelettes robustes:
-- login Playwright avec session persistée,
-- extraction ventes/produits adaptée au DOM SSR actuel (`.js-product-card`),
-- validation prix marque (JSON-LD + fallback regex),
-- scoring + upsert DB + notification Slack.
+# Boucle continue
+python -m src.app
+```
 
-Les sélecteurs Showroomprive et les règles métier doivent être ajustés sur tes pages réelles.
+## Architecture
 
-Note login Showroomprive: il n'y a pas toujours de page `/login` directe.
-Le scraper ouvre la home, ferme la popin cookies, clique `Déjà membre ?` et remplit le popup de connexion.
+```
+src/
+  api/          FastAPI : routers scan, cron, products, ai
+  ai/           Orchestrateur multi-provider + providers Claude/OpenAI/Gemini
+  showroom/     Scraper Playwright (login + extraction ventes/produits)
+  brands/       Validateur prix marque (JSON-LD + regex)
+  scoring.py    Calcul remise réelle et seuil d'intérêt
+  notifier/     Slack webhook
+  models.py     SQLAlchemy : tables products + ai_research_jobs
+  config.py     Settings dataclass chargé depuis .env
+frontend/       Next.js 14 — Dashboard, Top 10, Articles, Résultats IA
+```
+
+## Contraintes scraping
+
+- Respecter les CGU de Showroomprivé.
+- Ne pas contourner les CAPTCHAs. En cas de challenge, stopper le run.
+- Les captures de debug sont sauvegardées dans `artifacts/`.
