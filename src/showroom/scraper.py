@@ -311,6 +311,7 @@ class ShowroomScraper:
 
             displayed_discount = self._extract_discount_from_card(card)
             brand = sale_brand
+            brand_reference_url = self._extract_brand_reference_url(card, page.url)
 
             products.append(
                 ScrapedProduct(
@@ -320,7 +321,7 @@ class ShowroomScraper:
                     showroom_price=showroom_price,
                     displayed_discount=displayed_discount,
                     product_url=product_url,
-                    brand_reference_url=None,
+                    brand_reference_url=brand_reference_url,
                 )
             )
 
@@ -361,6 +362,45 @@ class ShowroomScraper:
                 parsed = ShowroomScraper._parse_percent(text)
                 if parsed is not None:
                     return parsed
+        return None
+
+    def _extract_brand_reference_url(self, card, page_url: str) -> str | None:
+        """Try to find an external brand URL in the product card.
+
+        Priority:
+        1. Any <a href> pointing outside showroomprive.com (brand site link)
+        2. data-brand-url attribute on the card
+        3. Fall back to the product page URL itself — BrandPriceValidator will
+           extract the price from JSON-LD offers.price on the Showroomprive
+           product page, which is often present and reflects the brand price.
+        """
+        try:
+            links = card.locator("a[href]")
+            for i in range(links.count()):
+                href = (links.nth(i).get_attribute("href") or "").strip()
+                if not href or href.startswith("#"):
+                    continue
+                absolute = urljoin(page_url, href)
+                parsed = urlparse(absolute)
+                if parsed.netloc and "showroomprive.com" not in parsed.netloc:
+                    return absolute
+        except Exception:
+            pass
+
+        # data-brand-url is sometimes present on sale containers
+        for attr in ("data-brand-url", "data-brand-link"):
+            try:
+                val = card.get_attribute(attr)
+                if val:
+                    return val
+            except Exception:
+                pass
+
+        # Fallback: use the product page itself (JSON-LD often has offers.price)
+        product_href = self._extract_product_href_from_card(card)
+        if product_href:
+            return urljoin(page_url, product_href)
+
         return None
 
     def _extract_product_href_from_card(self, card) -> str | None:
