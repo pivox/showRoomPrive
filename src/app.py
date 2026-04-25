@@ -25,7 +25,7 @@ from src.scoring import compute_real_discount, is_interesting_offer
 from src.showroom.scraper import ShowroomScraper
 
 
-def run_scan() -> None:
+def run_scan() -> int:
     settings = load_settings()
     try:
         init_db(settings.database_url)
@@ -94,6 +94,8 @@ def run_scan() -> None:
                 )
 
         session.commit()
+
+    return len(scraped_products)
 
 
 def parse_args() -> argparse.Namespace:
