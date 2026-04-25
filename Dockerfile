@@ -9,5 +9,8 @@ COPY . .
 
 ENV PYTHONUNBUFFERED=1
 
-CMD ["python", "-m", "src.app"]
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8000"]
