@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -94,7 +94,7 @@ function JobDrawer({ job, onClose, onRelaunch }: { job: AIJob; onClose: () => vo
   );
 }
 
-export default function AIResultsPage() {
+function AIResultsContent() {
   const qc = useQueryClient();
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState("");
@@ -212,5 +212,13 @@ export default function AIResultsPage() {
         />
       )}
     </div>
+  );
+}
+
+export default function AIResultsPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-gray-400">Chargement…</div>}>
+      <AIResultsContent />
+    </Suspense>
   );
 }

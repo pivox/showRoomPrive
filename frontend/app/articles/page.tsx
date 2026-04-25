@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { Suspense, useState, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/status-badge";
 
 const PAGE_SIZE = 50;
 
-export default function ArticlesPage() {
+function ArticlesContent() {
   const router = useRouter();
   const sp = useSearchParams();
   const qc = useQueryClient();
@@ -236,5 +236,13 @@ export default function ArticlesPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ArticlesPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-gray-400">Chargement…</div>}>
+      <ArticlesContent />
+    </Suspense>
   );
 }
