@@ -5,6 +5,7 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc, func, select
+from sqlalchemy.orm import selectinload
 
 from src.api.deps import get_db, get_settings
 from src.api.schemas.ai import AIJobListOut, AIJobOut, JobSummary, ResearchRequest, ResearchResponse
@@ -32,6 +33,11 @@ def _job_to_out(job: AIResearchJob) -> AIJobOut:
         created_at=job.created_at,
         finished_at=job.finished_at,
     )
+
+
+def _with_product(stmt):
+    """Eager-load the product relation to avoid DetachedInstanceError."""
+    return stmt.options(selectinload(AIResearchJob.product))
 
 
 def _run_research_thread(product_id: int, job_id: int, settings) -> None:
@@ -96,7 +102,8 @@ def launch_research(
 
 @router.get("/results/{job_id}", response_model=AIJobOut)
 def get_result(job_id: int, db=Depends(get_db)):
-    job = db.get(AIResearchJob, job_id)
+    stmt = _with_product(select(AIResearchJob).where(AIResearchJob.id == job_id))
+    job = db.execute(stmt).scalar_one_or_none()
     if job is None:
         raise HTTPException(404, "Job introuvable.")
     return _job_to_out(job)
@@ -117,7 +124,13 @@ def list_results(
         base = base.where(AIResearchJob.product_id == product_id)
 
     total = db.execute(select(func.count()).select_from(base.subquery())).scalar_one()
-    paged = base.order_by(desc(AIResearchJob.created_at)).offset((page - 1) * page_size).limit(page_size)
+
+    paged = (
+        _with_product(base)
+        .order_by(desc(AIResearchJob.created_at))
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+    )
     items = db.execute(paged).scalars().all()
 
     return AIJobListOut(
