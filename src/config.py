@@ -24,6 +24,12 @@ def _float(value: str | None, default: float) -> float:
     return float(value)
 
 
+def _list(value: str | None, default: list[str]) -> list[str]:
+    if value is None:
+        return default
+    return [v.strip() for v in value.split(",") if v.strip()]
+
+
 @dataclass(frozen=True)
 class Settings:
     showroom_email: str
@@ -41,6 +47,18 @@ class Settings:
     playwright_headless: bool
     playwright_storage_state_path: str
     request_timeout_seconds: int
+    # API
+    api_host: str
+    api_port: int
+    cors_origins: list[str]
+    cron_autostart: bool
+    # AI
+    ai_provider_order: str
+    ai_result_ttl_hours: int
+    anthropic_api_key: str
+    openai_api_key: str
+    google_ai_api_key: str
+    tavily_api_key: str
 
 
 def load_settings() -> Settings:
@@ -67,4 +85,14 @@ def load_settings() -> Settings:
             "playwright/.auth/state.json",
         ),
         request_timeout_seconds=_int(os.getenv("REQUEST_TIMEOUT_SECONDS"), 15),
+        api_host=os.getenv("API_HOST", "0.0.0.0"),
+        api_port=_int(os.getenv("API_PORT"), 8000),
+        cors_origins=_list(os.getenv("CORS_ORIGINS"), ["http://localhost:3000"]),
+        cron_autostart=_bool(os.getenv("CRON_AUTOSTART"), False),
+        ai_provider_order=os.getenv("AI_PROVIDER_ORDER", "claude,openai,gemini"),
+        ai_result_ttl_hours=_int(os.getenv("AI_RESULT_TTL_HOURS"), 24),
+        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+        openai_api_key=os.getenv("OPENAI_API_KEY", ""),
+        google_ai_api_key=os.getenv("GOOGLE_AI_API_KEY", ""),
+        tavily_api_key=os.getenv("TAVILY_API_KEY", ""),
     )
