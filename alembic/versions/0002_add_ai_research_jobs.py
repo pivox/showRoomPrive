@@ -1,7 +1,7 @@
 """add ai_research_jobs table
 
-Revision ID: 0001
-Revises:
+Revision ID: 0002
+Revises: 0001
 Create Date: 2026-04-25
 """
 from __future__ import annotations
@@ -9,8 +9,8 @@ from __future__ import annotations
 import sqlalchemy as sa
 from alembic import op
 
-revision = "0001"
-down_revision = None
+revision = "0002"
+down_revision = "0001"
 branch_labels = None
 depends_on = None
 
