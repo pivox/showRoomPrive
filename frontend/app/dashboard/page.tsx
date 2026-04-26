@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
 import { formatRelativeDate } from "@/lib/utils";
 import { StatusBadge } from "@/components/status-badge";
 
-export default function DashboardPage() {
+function DashboardContent() {
   const qc = useQueryClient();
   const [confirmStop, setConfirmStop] = useState(false);
 
@@ -153,5 +153,13 @@ export default function DashboardPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    <Suspense fallback={<div className="p-8 text-gray-400">Chargement…</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }

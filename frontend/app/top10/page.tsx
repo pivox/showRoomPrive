@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/lib/api";
@@ -71,7 +71,7 @@ function DetailPanel({ job, onClose }: { job: AIJob; onClose: () => void }) {
   );
 }
 
-export default function Top10Page() {
+function Top10Content() {
   const qc = useQueryClient();
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [detailJob, setDetailJob] = useState<AIJob | null>(null);
@@ -205,5 +205,13 @@ export default function Top10Page() {
 
       {detailJob && <DetailPanel job={detailJob} onClose={() => setDetailJob(null)} />}
     </div>
+  );
+}
+
+export default function Top10Page() {
+  return (
+    <Suspense fallback={<div className="p-8 text-gray-400">Chargement…</div>}>
+      <Top10Content />
+    </Suspense>
   );
 }
