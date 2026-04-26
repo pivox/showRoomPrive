@@ -67,7 +67,7 @@ class BrandPriceValidator:
         return None
 
     def _price_from_text(self, text: str) -> Decimal | None:
-        match = re.search(r"([0-9]+(?:[.,][0-9]{1,2})?)\\s*€", text)
+        match = re.search(r"([0-9]+(?:[.,][0-9]{1,2})?)\s*€", text)
         if not match:
             return None
         return self._to_decimal(match.group(1))
